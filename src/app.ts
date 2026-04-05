@@ -19,6 +19,14 @@ export function createApp(getEnv: () => Env) {
 
   setupSwagger(app);
 
+  app.get("/", (_req, res) => {
+    res.json({
+      service: "finsight-api",
+      health: "/health",
+      apiDocs: "/api-docs",
+    });
+  });
+
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
   });
