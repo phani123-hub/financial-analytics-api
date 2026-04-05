@@ -1,0 +1,420 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-finsight-api",
+    "name": "FinSight API",
+    "description": "Role-based finance dashboard backend — import with `FinSight-API.postman_environment.json`. Run **Auth → Login (Admin)** first to populate tokens via test scripts.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "recordId", "value": "" },
+    { "key": "userId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (new VIEWER)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo.newuser@finsight.demo\",\n  \"password\": \"SecurePass2026!\",\n  \"name\": \"Demo New Hire\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "Public. Creates VIEWER + returns JWT in `data.token`."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Admin) — saves tokens",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Login succeeded', () => pm.response.code === 200 && json.success === true);",
+                  "if (json.data && json.data.token) {",
+                  "  pm.environment.set('adminToken', json.data.token);",
+                  "  pm.environment.set('token', json.data.token);",
+                  "  pm.collectionVariables.set('userId', json.data.user.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Seeded admin after `npm run db:seed`. Test script stores `adminToken` and `token`."
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Analyst) — saves analystToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) { pm.environment.set('analystToken', json.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"analyst@example.com\",\n  \"password\": \"Analyst@123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Viewer) — saves viewerToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.token) { pm.environment.set('viewerToken', json.data.token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"viewer@example.com\",\n  \"password\": \"Viewer@123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "response": []
+        },
+        {
+          "name": "Me (current user)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me",
+            "description": "Uses `token` env var (set after Admin login)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "auth": {
+        "type": "bearer",
+        "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+      },
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users?page=1&limit=20",
+            "description": "**ADMIN only.** Expect 200 + `data.items`, `data.total`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get user by id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "Set `userId` collection variable or paste a cuid from List users."
+          },
+          "response": []
+        },
+        {
+          "name": "Patch user (e.g. promote role)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ANALYST\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "**ADMIN.** At least one of name, email, role, status."
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate user",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}",
+            "description": "**ADMIN.** Sets status INACTIVE."
+          },
+          "response": []
+        }
+      ],
+      "description": "Folder auth: Bearer `{{adminToken}}`. **403** if not admin."
+    },
+    {
+      "name": "Records",
+      "item": [
+        {
+          "name": "Create record (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 275.5,\n  \"type\": \"EXPENSE\",\n  \"category\": \"Software\",\n  \"date\": \"2026-04-05T12:00:00.000Z\",\n  \"description\": \"Annual analytics suite subscription\"\n}"
+            },
+            "url": "{{baseUrl}}/api/records",
+            "description": "**ADMIN only.** 201 + record. **403** for Analyst/Viewer."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (pm.response.code === 201 && json.data && json.data.id) {",
+                  "  pm.collectionVariables.set('recordId', json.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List records (any role)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/records?page=1&limit=20&sort=date&order=desc",
+            "description": "Viewer+ . Optional: type, category, dateFrom, dateTo."
+          },
+          "response": []
+        },
+        {
+          "name": "Get record by id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/records/{{recordId}}",
+            "description": "Paste id from List records if `recordId` is empty."
+          },
+          "response": []
+        },
+        {
+          "name": "Patch record (Admin)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated: reclassified operating expense\"\n}"
+            },
+            "url": "{{baseUrl}}/api/records/{{recordId}}",
+            "description": "**ADMIN only.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete record (Admin, soft)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/records/{{recordId}}",
+            "description": "**ADMIN.** 200 + `data.id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Create record as Analyst (expect 403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{analystToken}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"type\": \"EXPENSE\",\n  \"category\": \"Test\",\n  \"date\": \"2026-04-05T12:00:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/records",
+            "description": "Run **Login (Analyst)** first. RBAC: **403** — only **ADMIN** may create."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Analyst cannot create records', () => pm.response.code === 403);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Summary (Viewer+)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{viewerToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/summary",
+            "description": "Expect `data.totalIncome`, `totalExpense`, `netBalance`."
+          },
+          "response": []
+        },
+        {
+          "name": "Recent activity (Viewer+)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{viewerToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/recent-activity?limit=10"
+          },
+          "response": []
+        },
+        {
+          "name": "Category breakdown (Analyst+)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{analystToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/category-breakdown",
+            "description": "**403** if `viewerToken` used."
+          },
+          "response": []
+        },
+        {
+          "name": "Monthly trends (Analyst+)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{analystToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/monthly-trends"
+          },
+          "response": []
+        },
+        {
+          "name": "Insights (Analyst+)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{analystToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/insights"
+          },
+          "response": []
+        },
+        {
+          "name": "Category breakdown as Viewer (expect 403)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{viewerToken}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/dashboard/category-breakdown",
+            "description": "RBAC demo: **403** Forbidden."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Viewer blocked from analyst route', () => pm.response.code === 403);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}

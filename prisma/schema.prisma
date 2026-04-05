@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum Role {
+  VIEWER
+  ANALYST
+  ADMIN
+}
+
+enum RecordType {
+  INCOME
+  EXPENSE
+}
+
+enum AuditAction {
+  USER_CREATED
+  USER_UPDATED
+  USER_DEACTIVATED
+  RECORD_CREATED
+  RECORD_UPDATED
+  RECORD_DELETED
+}
+
+enum AuditTargetType {
+  USER
+  FINANCIAL_RECORD
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      Role     @default(VIEWER)
+  status    UserStatus @default(ACTIVE)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  records   FinancialRecord[] @relation("CreatedBy")
+  auditLogsPerformed AuditLog[] @relation("AuditPerformedBy")
+}
+
+model AuditLog {
+  id               String          @id @default(cuid())
+  action           AuditAction
+  performedById    String
+  performedByEmail String
+  targetType       AuditTargetType
+  targetId         String?
+  targetLabel      String?
+  createdAt        DateTime        @default(now())
+
+  performedBy User @relation("AuditPerformedBy", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([performedById])
+}
+
+model FinancialRecord {
+  id        String   @id @default(cuid())
+  amount    Decimal  @db.Decimal(14, 2)
+  type      RecordType
+  category  String
+  date      DateTime
+  description String?
+  createdById String
+  createdBy  User     @relation("CreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  isDeleted Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdById])
+  @@index([type])
+  @@index([category])
+  @@index([date])
+}
