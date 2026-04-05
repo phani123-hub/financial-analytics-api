@@ -1,11 +1,17 @@
 export class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-    public details?: unknown
-  ) {
+  statusCode: number;
+  isOperational: boolean;
+  public details?: unknown;
+
+  constructor(statusCode: number, message: string, details?: unknown) {
     super(message);
     this.name = "ApiError";
-    Error.captureStackTrace?.(this, this.constructor);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+    this.details = details;
+
+    if ((Error as any).captureStackTrace) {
+      (Error as any).captureStackTrace(this, this.constructor);
+    }
   }
 }

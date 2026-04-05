@@ -5,6 +5,8 @@ import { createApp } from "./app";
 const env = loadEnv();
 const app = createApp(() => env);
 
-app.listen(env.PORT, () => {
-  console.log(`Server listening on port ${env.PORT}`);
+const PORT = Number(process.env.PORT) || env.PORT || 10000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
